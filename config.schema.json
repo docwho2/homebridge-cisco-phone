@@ -5,11 +5,35 @@
   "schema": {
     "type": "object",
     "properties": {
-      "name": {
-        "title": "phoneIP",
-        "type": "string",
+      "phones": {
+        "title": "Cisco IP Phones",
+        "type": "array",
         "required": true,
-        "default": "10.0.0.50"
+        "items" : {
+          "title" : "Phone Config",
+          "type" : "object",
+          "required" : true,
+          "properties" : {
+            "IPAddress" : {
+              "title" : "IP Address",
+              "type" : "string",
+              "format" : "ipv4",
+              "required" : true,
+              "placeholder" : "XXX.XXX.XXX.XXX"
+            },
+            "DeviceType" : {
+              "title" : "Homekit Device Type",
+              "type" : "string",
+              "default" : "relay",
+              "required" : true,
+              "oneOf" : [
+                { "title" : "Relay" , "enum" : ["relay"] },
+                { "title" : "Light Bulb" , "enum" : ["light"] },
+                { "title" : "Fan" , "enum" : ["fan"] }
+              ]
+            }
+          }
+        }
       }
     }
   }
