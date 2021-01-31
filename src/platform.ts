@@ -9,7 +9,7 @@ import { AccessoriesService } from './accessories.service';
 
 import CUIPP = require('cuipp');
 import util = require('util');
-import { SSL_OP_EPHEMERAL_RSA } from 'constants';
+
 const getDeviceInfo = util.promisify(CUIPP.getDeviceInfo);
 
 /**
