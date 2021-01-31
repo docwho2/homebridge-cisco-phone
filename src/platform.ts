@@ -1,7 +1,8 @@
 import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service, Characteristic } from 'homebridge';
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
-import { RelayAccessory } from './platformAccessory';
+import { ContactSensorAccessory, LightAccessory } from './platformAccessory';
+import { nextTick } from 'process';
 
 const CUIPP = require('cuipp');
 const util = require('util');
@@ -48,6 +49,20 @@ export class CiscoPhonePlatform implements DynamicPlatformPlugin {
     this.accessories.push(accessory);
   }
 
+
+  async getDeviceInfoX(ip: string) {
+    try {
+      const phone = { host: ip };
+      this.log.debug('Connecting to device ', ip);
+      const deviceXML = await getDeviceInfo(phone);
+      this.log.debug('Got DeviceInformtionX from Phone ', deviceXML);
+      return deviceXML;
+    } catch (err) {
+      this.log.error(`Error getting DeviceInformationX from ${ip}`, err);
+      return null;
+    }
+  }
+
   /**
    * This is an example method showing how to register discovered accessories.
    * Accessories must only be registered once, previously created accessories
@@ -64,25 +79,15 @@ export class CiscoPhonePlatform implements DynamicPlatformPlugin {
 
     // loop over the discovered devices and register each one if it has not already been registered
     for (const device of devices) {
-
-      const phone = { host: device.IPAddress };
-      this.log.info('Connecting to device ', device.IPAddress);
-
-  
-      try {
-        device.res = await getDeviceInfo(phone);
-        this.log.info('Got Info from Phone', device.res);
-      } catch (err) {
-        this.log.error(err);
+      const deviceXML = await this.getDeviceInfoX(device.IPAddress);
+      if ( ! deviceXML ) {
+        continue;
       }
-    
-
-      this.log.info('DeviceName is ', device.res.HostName);
 
       // generate a unique id for the accessory this should be generated from
       // something globally unique, but constant, for example, the device serial
       // number or MAC address
-      const uuid = this.api.hap.uuid.generate(device.res.HostName);
+      const uuid = this.api.hap.uuid.generate(deviceXML.HostName);
 
       // see if an accessory with the same uuid has already been registered and restored from
       // the cached devices we stored in the `configureAccessory` method above
@@ -99,9 +104,20 @@ export class CiscoPhonePlatform implements DynamicPlatformPlugin {
 
           // create the accessory handler for the restored accessory
           // this is imported from `platformAccessory.ts`
-          new RelayAccessory(this, existingAccessory);
+          existingAccessory.context.deviceInformation = deviceXML;
+          existingAccessory.context.deviceIPAddress = device.IPAddress;
+          existingAccessory.context.devicePollingInterval = device.PollingInterval || 60000;
+          switch (device.DeviceType || 'contact') {
+            case 'light':
+              new LightAccessory(this, existingAccessory);
+              break;
+            case 'contact':
+              new ContactSensorAccessory(this, existingAccessory);
+              break;
+          }
 
           // update accessory cache with any changes to the accessory details and information
+
           this.api.updatePlatformAccessories([existingAccessory]);
         } else if (!device) {
           // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
@@ -111,18 +127,28 @@ export class CiscoPhonePlatform implements DynamicPlatformPlugin {
         }
       } else {
         // the accessory does not yet exist, so we need to create it
-        this.log.info('Adding new accessory:', device.res.HostName);
+        this.log.info('Adding new accessory:', deviceXML.HostName);
 
         // create a new accessory
-        const accessory = new this.api.platformAccessory(device.res.HostName, uuid);
+        const accessory = new this.api.platformAccessory(deviceXML.HostName, uuid);
 
         // store a copy of the device object in the `accessory.context`
         // the `context` property can be used to store any data about the accessory you may need
-        accessory.context.deviceInformation = device.res;
+        accessory.context.deviceInformation = deviceXML;
+        accessory.context.deviceIPAddress = device.IPAddress;
+        accessory.context.devicePollingInterval = device.PollingInterval || 60000;
 
         // create the accessory handler for the newly create accessory
         // this is imported from `platformAccessory.ts`
-        new RelayAccessory(this, accessory);
+        switch (device.DeviceType || 'contact') {
+          case 'light':
+            new LightAccessory(this, accessory);
+            break;
+          case 'contact':
+            new ContactSensorAccessory(this, accessory);
+            break;
+        }
+
 
         // link the accessory to your platform
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);

@@ -24,13 +24,21 @@
             "DeviceType" : {
               "title" : "Homekit Device Type",
               "type" : "string",
-              "default" : "relay",
+              "default" : "contact",
               "required" : true,
               "oneOf" : [
-                { "title" : "Relay" , "enum" : ["relay"] },
+                { "title" : "Contact Sensor" , "enum" : ["contact"] },
                 { "title" : "Light Bulb" , "enum" : ["light"] },
                 { "title" : "Fan" , "enum" : ["fan"] }
               ]
+            },
+            "PollingInterval" : {
+              "title" : "Interval to poll device in Milliseconds (0 to disable)",
+              "type" : "integer",
+              "default" : 60000,
+              "required" : true,
+              "minimum" : 0,
+              "maximum" : 86400000
             }
           }
         }

@@ -1,4 +1,4 @@
-import { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback } from 'homebridge';
+import { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback, Characteristic } from 'homebridge';
 
 import { CiscoPhonePlatform } from './platform';
 
@@ -7,21 +7,11 @@ import { CiscoPhonePlatform } from './platform';
  * An instance of this class is created for each accessory your platform registers
  * Each accessory may expose multiple services of different service types.
  */
-export class RelayAccessory {
-  private service: Service;
-
-  /**
-   * These are just used to create a working example
-   * You should implement your own code to track the state of your accessory
-   */
-  private exampleStates = {
-    On: false,
-    Brightness: 100,
-  };
+abstract class BaseAccessory {
 
   constructor(
-    private readonly platform: CiscoPhonePlatform,
-    private readonly accessory: PlatformAccessory,
+    readonly platform: CiscoPhonePlatform,
+    readonly accessory: PlatformAccessory,
   ) {
 
     // set accessory information
@@ -34,13 +24,121 @@ export class RelayAccessory {
       .setCharacteristic(this.platform.Characteristic.FirmwareRevision, this.accessory.context.deviceInformation.bootLoadID)
       .setCharacteristic(this.platform.Characteristic.SerialNumber, this.accessory.context.deviceInformation.serialNumber);
 
+    if (this.accessory.context.devicePollingInterval !== 0 ) {
+      this.platform.log.info(`Pollinging interval is ${this.accessory.context.devicePollingInterval}`);
+      setInterval(() => {
+        this.platform.getDeviceInfoX(accessory.context.deviceIPAddress).then(
+          (data) => {
+            // If MWI has changed, update context and set the state
+            if (this.accessory.context.deviceInformation.MessageWaiting !== data.MessageWaiting) {
+              this.platform.log.info('MWI has changed, updating accessory');
+              this.accessory.context.deviceInformation = data;
+              this.setState();
+            }
+          },
+        );
+      }, this.accessory.context.devicePollingInterval || 60000);
+    }
+  }
+
+  abstract setState();
+
+  /**
+   * Return true is MWI is set, false otherwise
+   */
+  getBooleanState(): boolean {
+    this.platform.log.info('Device MWI State is ', this.accessory.context.deviceInformation.MessageWaiting);
+    if (this.accessory.context.deviceInformation.MessageWaiting === 'Yes') {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
+export class ContactSensorAccessory extends BaseAccessory {
+  service: Service;
+
+  constructor(
+    readonly platform: CiscoPhonePlatform,
+    readonly accessory: PlatformAccessory,
+  ) {
+    super(platform, accessory);
+
+
     // get the LightBulb service if it exists, otherwise create a new LightBulb service
     // you can create multiple services for each accessory
-    this.service = this.accessory.getService(this.platform.Service.ContactSensor) || this.accessory.addService(this.platform.Service.ContactSensor);
+    const check = this.accessory.getService(this.platform.Service.Lightbulb);
+    if (check) {
+      this.accessory.removeService(check);
+    }
+
+    this.service = this.accessory.getService(this.platform.Service.ContactSensor)
+      || this.accessory.addService(this.platform.Service.ContactSensor);
 
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
     this.service.setCharacteristic(this.platform.Characteristic.Name, this.accessory.context.deviceInformation.HostName);
+
+    this.setState();
+
+    // register handlers for the Brightness Characteristic
+    this.service.getCharacteristic(this.platform.Characteristic.ContactSensorState)
+      .on('get', this.getState.bind(this));       // SET - bind to the 'setBrightness` method below
+  }
+
+  setState() {
+    //  Set the current state
+    if (this.getBooleanState()) {
+      this.service.setCharacteristic(this.platform.Characteristic.ContactSensorState,
+        this.platform.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
+    } else {
+      this.service.setCharacteristic(this.platform.Characteristic.ContactSensorState,
+        this.platform.Characteristic.ContactSensorState.CONTACT_DETECTED);
+    }
+  }
+
+  /**
+   * Handle "SET" requests from HomeKit
+   * These are sent when the user changes the state of an accessory, for example, changing the Brightness
+   */
+  getState(callback: CharacteristicSetCallback) {
+
+    if (this.getBooleanState()) {
+      this.platform.log.info('Reporting contact NOT detected (MWI is on');
+      callback(null, this.platform.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
+    } else {
+      // you must call the callback function
+      this.platform.log.info('Reporting contact detected (MWI is off)');
+      callback(null, this.platform.Characteristic.ContactSensorState.CONTACT_DETECTED);
+    }
+  }
+}
+
+export class LightAccessory extends BaseAccessory {
+  service: Service;
+
+  constructor(
+    readonly platform: CiscoPhonePlatform,
+    readonly accessory: PlatformAccessory,
+  ) {
+    super(platform, accessory);
+
+
+    // get the LightBulb service if it exists, otherwise create a new LightBulb service
+    // you can create multiple services for each accessory
+    const check = this.accessory.getService(this.platform.Service.ContactSensor);
+    if (check) {
+      this.accessory.removeService(check);
+    }
+
+    this.service = this.accessory.getService(this.platform.Service.Lightbulb)
+      || this.accessory.addService(this.platform.Service.Lightbulb);
+
+    // set the service name, this is what is displayed as the default name on the Home app
+    // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
+    this.service.setCharacteristic(this.platform.Characteristic.Name, this.accessory.context.deviceInformation.HostName);
+    this.setState();
 
     // each service must implement at-minimum the "required characteristics" for the given service type
     // see https://developers.homebridge.io/#/service/Lightbulb
@@ -51,110 +149,32 @@ export class RelayAccessory {
     //  .on('get', this.getOn.bind(this));               // GET - bind to the `getOn` method below
 
     // register handlers for the Brightness Characteristic
-    this.service.getCharacteristic(this.platform.Characteristic.ContactSensorState)
-      .on('get', this.getRelayState.bind(this));       // SET - bind to the 'setBrightness` method below
-
-
-    /**
-     * Creating multiple services of the same type.
-     * 
-     * To avoid "Cannot add a Service with the same UUID another Service without also defining a unique 'subtype' property." error,
-     * when creating multiple services of the same type, you need to use the following syntax to specify a name and subtype id:
-     * this.accessory.getService('NAME') || this.accessory.addService(this.platform.Service.Lightbulb, 'NAME', 'USER_DEFINED_SUBTYPE_ID');
-     * 
-     * The USER_DEFINED_SUBTYPE must be unique to the platform accessory (if you platform exposes multiple accessories, each accessory
-     * can use the same sub type id.)
-     */
-
-    // Example: add two "motion sensor" services to the accessory
-    const motionSensorOneService = this.accessory.getService('Motion Sensor One Name') ||
-      this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor One Name', 'YourUniqueIdentifier-1');
-
-    const motionSensorTwoService = this.accessory.getService('Motion Sensor Two Name') ||
-      this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor Two Name', 'YourUniqueIdentifier-2');
-
-    /**
-     * Updating characteristics values asynchronously.
-     * 
-     * Example showing how to update the state of a Characteristic asynchronously instead
-     * of using the `on('get')` handlers.
-     * Here we change update the motion sensor trigger states on and off every 10 seconds
-     * the `updateCharacteristic` method.
-     * 
-     */
-    let motionDetected = false;
-    setInterval(() => {
-      // EXAMPLE - inverse the trigger
-      motionDetected = !motionDetected;
-
-      // push the new value to HomeKit
-      motionSensorOneService.updateCharacteristic(this.platform.Characteristic.MotionDetected, motionDetected);
-      motionSensorTwoService.updateCharacteristic(this.platform.Characteristic.MotionDetected, !motionDetected);
-
-      this.platform.log.debug('Triggering motionSensorOneService:', motionDetected);
-      this.platform.log.debug('Triggering motionSensorTwoService:', !motionDetected);
-    }, 10000);
+    this.service.getCharacteristic(this.platform.Characteristic.On)
+      .on('get', this.getState.bind(this))
+      .on('set', this.setOn.bind(this));
   }
 
-  /**
-   * Handle "SET" requests from HomeKit
-   * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
-   */
+  setState() {
+    this.service.setCharacteristic(this.platform.Characteristic.On, this.getBooleanState());
+  }
+
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-
-    // implement your own code to turn your device on/off
-    this.exampleStates.On = value as boolean;
-
-    this.platform.log.debug('Set Characteristic On ->', value);
-
-    // you must call the callback function
+    this.platform.log.debug('Triggered SET ', value);
+    if (value as boolean) {
+      this.platform.log.info('Triggered a turn ON, turning off');
+      setTimeout(() => {
+        this.service.setCharacteristic(this.platform.Characteristic.On, false);
+      }, 1000);
+    }
     callback(null);
-  }
-
-  /**
-   * Handle the "GET" requests from HomeKit
-   * These are sent when HomeKit wants to know the current state of the accessory, for example, checking if a Light bulb is on.
-   * 
-   * GET requests should return as fast as possbile. A long delay here will result in
-   * HomeKit being unresponsive and a bad user experience in general.
-   * 
-   * If your device takes time to respond you should update the status of your device
-   * asynchronously instead using the `updateCharacteristic` method instead.
-
-   * @example
-   * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
-   */
-  getOn(callback: CharacteristicGetCallback) {
-
-    // implement your own code to check if the device is on
-    const isOn = this.exampleStates.On;
-
-    this.platform.log.debug('Get Characteristic On ->', isOn);
-
-    // you must call the callback function
-    // the first argument should be null if there were no errors
-    // the second argument should be the value to return
-    callback(null, isOn);
   }
 
   /**
    * Handle "SET" requests from HomeKit
    * These are sent when the user changes the state of an accessory, for example, changing the Brightness
    */
-  getRelayState(callback: CharacteristicSetCallback) {
-
-    this.platform.log.info('Device MWI State is ', this.accessory.context.deviceInformation.MessageWaiting );
-    if ( this.accessory.context.deviceInformation.MessageWaiting === 'Yes' ) {
-      this.platform.log.info('Reporting contact NOT detected (MWI is on');
-      callback(null, this.platform.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED );
-    
-    } else {
-      // you must call the callback function
-      this.platform.log.info('Reporting contact detected (MWI is off)');
-      callback(null, this.platform.Characteristic.ContactSensorState.CONTACT_DETECTED);
-    }
-
-   
+  getState(callback: CharacteristicSetCallback) {
+    callback(null, this.getBooleanState());
   }
 
 }
