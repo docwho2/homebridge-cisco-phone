@@ -3,6 +3,7 @@ import { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallb
 
 import { CiscoPhonePlatform } from './platform';
 
+
 /**
  * Platform Accessory
  * An instance of this class is created for each accessory your platform registers

@@ -1,11 +1,15 @@
 import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service, Characteristic } from 'homebridge';
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
+import { IPPhoneConfiguration } from './ipPhoneConfiguration';
 import { ContactSensorAccessory, LightAccessory } from './platformAccessory';
+import { ServiceType } from '@oznu/hap-client';
+import { AccessoriesService } from './accessories.service';
 
 
 import CUIPP = require('cuipp');
 import util = require('util');
+import { SSL_OP_EPHEMERAL_RSA } from 'constants';
 const getDeviceInfo = util.promisify(CUIPP.getDeviceInfo);
 
 /**
@@ -63,6 +67,12 @@ export class CiscoPhonePlatform implements DynamicPlatformPlugin {
     }
   }
 
+  sleep (ms) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }
+
   /**
    * This is an example method showing how to register discovered accessories.
    * Accessories must only be registered once, previously created accessories
@@ -70,12 +80,18 @@ export class CiscoPhonePlatform implements DynamicPlatformPlugin {
    */
   async discoverDevices() {
 
+    setTimeout(async () => {
+      const aService = new AccessoriesService(this.api, this.log);
+      await aService.init();
+      await this.sleep(20000);
+      const services: ServiceType[] = await aService.loadAccessories();
+      services.forEach(service => this.log.info(JSON.stringify(service, null, 2)));
+    }, 10000);
+
     // EXAMPLE ONLY
     // A real plugin you would discover accessories from the local network, cloud services
     // or a user-defined array in the platform config.
-    const devices = this.config.phones as { PollingInterval: number; IPAddress: string; DeviceType: string }[];
-
-
+    const devices = this.config.phones as IPPhoneConfiguration[];
 
     // loop over the discovered devices and register each one if it has not already been registered
     for (const device of devices ) {
