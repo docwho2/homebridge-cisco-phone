@@ -2,7 +2,7 @@ import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, 
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { ContactSensorAccessory, LightAccessory } from './platformAccessory';
-import { nextTick } from 'process';
+
 
 import CUIPP = require('cuipp');
 import util = require('util');
@@ -73,12 +73,12 @@ export class CiscoPhonePlatform implements DynamicPlatformPlugin {
     // EXAMPLE ONLY
     // A real plugin you would discover accessories from the local network, cloud services
     // or a user-defined array in the platform config.
-    const devices: any = this.config.phones;
+    const devices = this.config.phones as { PollingInterval: number; IPAddress: string; DeviceType: string }[];
 
 
 
     // loop over the discovered devices and register each one if it has not already been registered
-    for (const device of devices) {
+    for (const device of devices ) {
       const deviceXML = await this.getDeviceInfoX(device.IPAddress);
       if ( ! deviceXML ) {
         continue;

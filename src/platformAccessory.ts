@@ -1,4 +1,5 @@
-import { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback, Characteristic } from 'homebridge';
+import { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback } 
+  from 'homebridge';
 
 import { CiscoPhonePlatform } from './platform';
 
