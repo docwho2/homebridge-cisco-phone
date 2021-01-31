@@ -17,7 +17,9 @@
     "esModuleInterop": true,
     "noImplicitAny": false,
     "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
+    "experimentalDecorators": true
+  },
+  "rules" : {
     "rxjs-no-compat" : true
   },
   "include": [
