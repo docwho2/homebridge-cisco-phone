@@ -1,9 +1,11 @@
 {
   "private": false,
-  "displayName": "Cisco IP Phone MWI",
+  "displayName": "Cisco IP Phone",
   "name": "homebridge-cisco-phone",
   "version": "1.0.0",
-  "description": "Homebridge plugin for Cisco IP Phone MWI status.",
+  "description": "Homebridge plugin for Cisco IP Phone Interations.",
+  "author" : "docwho2",
+  "homepage": "https://github.com/docwho2/homebridge-cisco-phone",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -13,8 +15,8 @@
     "url": "https://github.com/docwho2/homebridge-cisco-phone/issues"
   },
   "engines": {
-    "node": ">=10.17.0",
-    "homebridge": ">=1.0.0"
+    "node": ">=14.15.0",
+    "homebridge": ">=1.1.0"
   },
   "main": "dist/index.js",
   "scripts": {
