@@ -4,8 +4,8 @@ import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { ContactSensorAccessory, LightAccessory } from './platformAccessory';
 import { nextTick } from 'process';
 
-const CUIPP = require('cuipp');
-const util = require('util');
+import CUIPP = require('cuipp');
+import util = require('util');
 const getDeviceInfo = util.promisify(CUIPP.getDeviceInfo);
 
 /**
