@@ -34,7 +34,7 @@ export class AccessoriesService {
    * Refresh the characteristics from Homebridge
    * @param services
    */
-    private refreshCharacteristics(services) {
+    private refreshCharacteristics(services: ServiceType[]) {
       services.forEach(service => service.refreshCharacteristics());
     }
 

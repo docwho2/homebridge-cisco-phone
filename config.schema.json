@@ -39,6 +39,53 @@
               "required" : true,
               "minimum" : 0,
               "maximum" : 86400000
+            },
+            "Actions" : {
+              "title" : "Configure Action Switches",
+              "type" : "array",
+              "required" : false,
+              "items" : {
+                "title" : "Action Config",
+                "type" : "object",
+                "required" : false,
+                "properties" : {
+                "DeviceName" : {
+                  "title" : "Switch Name",
+                  "type" : "string",
+                  "placeholder" : "Name",
+                  "required" : true
+                },
+
+                "ExecItems" : {
+                  "title" : "Exec Items",
+                  "type" : "array",
+                  "required" : true,
+                  "items" : {
+                    "title" : "Exec Item",
+                    "type" : "object",
+                    "required" : true,
+                    "properties" : {
+
+
+                "URL" : {
+                  "title" : "Action URL",
+                  "type" : "string",
+                  "placeholder" : "Play:Piano1.raw",
+                  "required" : true
+                },
+                "Priority" : {
+                  "title" : "Priority",
+                  "type" : "string",
+                  "default" : "0",
+                  "required" : true,
+                  "oneOf" : [
+                    { "title" : "Execute Immediately" , "enum" : ["0"] },
+                    { "title" : "Execute When Idle" , "enum" : ["1"] },
+                    { "title" : "Execute If Idle" , "enum" : ["2"] }
+                  ]
+                }
+              }
+              }}}}
             }
           }
         }

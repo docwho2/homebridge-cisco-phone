@@ -2,6 +2,7 @@ import { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallb
   from 'homebridge';
 
 import { CiscoPhonePlatform } from './platform';
+import { CiscoIPPhoneExecute, CiscoIPPhoneInput, CiscoIPPhoneText, ExecuteItem, PhoneCommunicator } from './phoneXML.model';
 
 
 /**
@@ -26,6 +27,7 @@ abstract class BaseAccessory {
       .setCharacteristic(this.platform.Characteristic.FirmwareRevision, this.accessory.context.deviceInformation.bootLoadID)
       .setCharacteristic(this.platform.Characteristic.SerialNumber, this.accessory.context.deviceInformation.serialNumber);
 
+    /** 
     if (this.accessory.context.devicePollingInterval !== 0 ) {
       this.platform.log.info(`Pollinging interval is ${this.accessory.context.devicePollingInterval}`);
       setInterval(() => {
@@ -41,6 +43,7 @@ abstract class BaseAccessory {
         );
       }, this.accessory.context.devicePollingInterval || 60000);
     }
+    */
   }
 
   abstract setState();
@@ -178,5 +181,64 @@ export class LightAccessory extends BaseAccessory {
   getState(callback: CharacteristicSetCallback) {
     callback(null, this.getBooleanState());
   }
+
+}
+export class SwitchAccessory extends BaseAccessory {
+    service: Service;
+  
+    constructor(
+      readonly platform: CiscoPhonePlatform,
+      readonly accessory: PlatformAccessory,
+      readonly phone: PhoneCommunicator,
+      readonly exec: CiscoIPPhoneExecute,
+    ) {
+      super(platform, accessory);
+  
+  
+      this.service = this.accessory.getService(this.platform.Service.Switch)
+        || this.accessory.addService(this.platform.Service.Switch);
+  
+      // set the service name, this is what is displayed as the default name on the Home app
+      // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
+      this.service.setCharacteristic(this.platform.Characteristic.Name, exec.commands[0].URL);
+      this.setState();
+  
+      // each service must implement at-minimum the "required characteristics" for the given service type
+      // see https://developers.homebridge.io/#/service/Lightbulb
+  
+      // register handlers for the On/Off Characteristic
+      //this.service.getCharacteristic(this.platform.Characteristic.RelayEnabled)
+      //  .on('set', this.setOn.bind(this))                // SET - bind to the `setOn` method below
+      //  .on('get', this.getOn.bind(this));               // GET - bind to the `getOn` method below
+  
+      // register handlers for the Brightness Characteristic
+      this.service.getCharacteristic(this.platform.Characteristic.On)
+        .on('get', this.getState.bind(this))
+        .on('set', this.setOn.bind(this));
+    }
+  
+    setState() {
+      this.service.setCharacteristic(this.platform.Characteristic.On, this.getBooleanState());
+    }
+  
+    setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
+      this.platform.log.debug('Triggered SET ', value);
+      if (value as boolean) {
+        this.platform.log.info('Triggered a turn ON, turning off and excuting action');
+        this.phone.send(this.exec);
+        setTimeout(() => {
+          this.service.setCharacteristic(this.platform.Characteristic.On, false);
+        }, 1000);
+      }
+      callback(null);
+    }
+  
+    /**
+     * Handle "SET" requests from HomeKit
+     * These are sent when the user changes the state of an accessory, for example, changing the Brightness
+     */
+    getState(callback: CharacteristicSetCallback) {
+      callback(null, false);
+    }
 
 }

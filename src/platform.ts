@@ -2,15 +2,13 @@ import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, 
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { IPPhoneConfiguration } from './ipPhoneConfiguration';
-import { ContactSensorAccessory, LightAccessory } from './platformAccessory';
+import { ContactSensorAccessory, LightAccessory, SwitchAccessory } from './platformAccessory';
 import { ServiceType } from '@oznu/hap-client';
 import { AccessoriesService } from './accessories.service';
+import { PhoneExpressServer } from './phoneXML.service';
+import { CiscoIPPhoneExecute, CiscoIPPhoneInput, CiscoIPPhoneText, ExecuteItem, PhoneCommunicator } from './phoneXML.model';
+import { HostParam } from '@nestjs/common';
 
-
-import CUIPP = require('cuipp');
-import util = require('util');
-
-const getDeviceInfo = util.promisify(CUIPP.getDeviceInfo);
 
 /**
  * HomebridgePlatform
@@ -54,19 +52,6 @@ export class CiscoPhonePlatform implements DynamicPlatformPlugin {
   }
 
 
-  async getDeviceInfoX(ip: string) {
-    try {
-      const phone = { host: ip };
-      this.log.debug('Connecting to device ', ip);
-      const deviceXML = await getDeviceInfo(phone);
-      this.log.debug('Got DeviceInformtionX from Phone ', deviceXML);
-      return deviceXML;
-    } catch (err) {
-      this.log.error(`Error getting DeviceInformationX from ${ip}`, err);
-      return null;
-    }
-  }
-
   sleep (ms) {
     return new Promise((resolve) => {
       setTimeout(resolve, ms);
@@ -80,13 +65,17 @@ export class CiscoPhonePlatform implements DynamicPlatformPlugin {
    */
   async discoverDevices() {
 
+    new PhoneExpressServer(this.log, 8080);
+
+    /** 
     setTimeout(async () => {
       const aService = new AccessoriesService(this.api, this.log);
       await aService.init();
       await this.sleep(20000);
       const services: ServiceType[] = await aService.loadAccessories();
-      services.forEach(service => this.log.info(JSON.stringify(service, null, 2)));
+      //services.forEach(service => this.log.info(JSON.stringify(service, null, 2)));
     }, 10000);
+    */
 
     // EXAMPLE ONLY
     // A real plugin you would discover accessories from the local network, cloud services
@@ -95,10 +84,34 @@ export class CiscoPhonePlatform implements DynamicPlatformPlugin {
 
     // loop over the discovered devices and register each one if it has not already been registered
     for (const device of devices ) {
-      const deviceXML = await this.getDeviceInfoX(device.IPAddress);
+      const phoneComm = new PhoneCommunicator({ host: device.IPAddress, username : 'steve', password : 'jensen'}, this.log);
+      const deviceXML = await phoneComm.getDeviceInfoX();
       if ( ! deviceXML ) {
         continue;
+      } 
+      
+      // Create any Actions necessary 
+      if ( device.Actions ) {
+        for ( const action of device.Actions ) {
+          const doit = new CiscoIPPhoneExecute(action.ExecItems);
+          const uuid = this.api.hap.uuid.generate(deviceXML.HostName + action.DeviceName);
+          const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
+          
+          if (existingAccessory) {
+            existingAccessory.context.deviceInformation = deviceXML;
+            new SwitchAccessory(this, existingAccessory, phoneComm, doit);
+            this.api.updatePlatformAccessories([existingAccessory]);
+          } else {
+            // create a new accessory
+            const accessory = new this.api.platformAccessory(action.DeviceName, uuid);
+            accessory.context.deviceInformation = deviceXML;
+            new SwitchAccessory(this, accessory, phoneComm, doit);
+            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+          }
+          
+        }
       }
+      //CUIPP.send( { host: device.IPAddress, username:'user', password:'pass'}, CUIPP.execute({'Device:Unlock':0, 'Dial:6122260725':2}) );
 
       // generate a unique id for the accessory this should be generated from
       // something globally unique, but constant, for example, the device serial
