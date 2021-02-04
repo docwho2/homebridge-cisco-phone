@@ -3,11 +3,8 @@ import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { IPPhoneConfiguration } from './ipPhoneConfiguration';
 import { ContactSensorAccessory, LightAccessory, SwitchAccessory } from './platformAccessory';
-import { ServiceType } from '@oznu/hap-client';
-import { AccessoriesService } from './accessories.service';
 import { PhoneExpressServer } from './phoneXML.service';
-import { CiscoIPPhoneExecute, CiscoIPPhoneInput, CiscoIPPhoneText, ExecuteItem, PhoneCommunicator } from './phoneXML.model';
-import { HostParam } from '@nestjs/common';
+import { CiscoIPPhoneExecute, PhoneCommunicator } from './phoneXML.model';
 
 
 /**

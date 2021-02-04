@@ -1,7 +1,7 @@
 import express from 'express';
 
 import { Logger } from 'homebridge';
-import { CiscoIPPhoneMenu, XMLOptions, MenuItem } from './phoneXML.model';
+import { CiscoIPPhoneMenu } from './phoneXML.model';
 
 
 export class PhoneExpressServer {
@@ -24,7 +24,7 @@ export class PhoneExpressServer {
         // I don't trust the phones to handle relative URLs, so
         //   build it again, using the same hostname (in case
         //   our test server has several network interfaces)
-        const self = 'http://' + req.headers.host + '/';
+        //const self = 'http://' + req.headers.host + '/';
 
         // If the Content-type HTTP header is not set, phones will not parse the payload.
         res.setHeader('Content-type', 'text/xml');
@@ -41,7 +41,7 @@ export class PhoneExpressServer {
         // I don't trust the phones to handle relative URLs, so
         //   build it again, using the same hostname (in case
         //   our test server has several network interfaces)
-        const self = 'http://' + req.headers.host + '/';
+        //const self = 'http://' + req.headers.host + '/';
 
         // If the Content-type HTTP header is not set, phones will not parse the payload.
         res.setHeader('Content-type', 'text/xml');

@@ -2,7 +2,7 @@ import { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallb
   from 'homebridge';
 
 import { CiscoPhonePlatform } from './platform';
-import { CiscoIPPhoneExecute, CiscoIPPhoneInput, CiscoIPPhoneText, ExecuteItem, PhoneCommunicator } from './phoneXML.model';
+import { CiscoIPPhoneExecute, PhoneCommunicator } from './phoneXML.model';
 
 
 /**
